@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "range": {
+    "startTime": "2026-02-01T00:00:00Z",
+    "endTime": "2026-12-31T23:59:59Z"
+  },
+  "field": "payload.category",
+  "top": [
+    {
+      "value": "Food",
+      "count": 4
+    },
+    {
+      "value": "Games",
+      "count": 4
+    }
+  ]
+}
