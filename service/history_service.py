@@ -29,7 +29,7 @@ def try_acquire_lock(lock_path: Path) -> bool:
 def release_lock(lock_path: Path) -> None:
     try:
         lock_path.unlink(missing_ok=True)
-    except Exception:
+    except OSError:
         pass
 
 def load_request(req_path: Path) -> Dict[str, Any]:
