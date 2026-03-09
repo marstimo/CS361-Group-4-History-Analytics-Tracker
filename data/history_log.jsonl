@@ -6,3 +6,5 @@
 {"timestamp": "2026-02-24T01:34:10Z", "source": "demo_client", "eventType": "purchase", "payload": {"category": "Games", "amount": 59.99}}
 {"timestamp": "2026-02-24T01:34:11Z", "source": "demo_client", "eventType": "purchase", "payload": {"category": "Food", "amount": 12.5}}
 {"timestamp": "2026-02-24T01:34:11Z", "source": "demo_client", "eventType": "purchase", "payload": {"category": "Games", "amount": 59.99}}
+{"timestamp": "2026-02-24T01:40:48Z", "source": "demo_client", "eventType": "purchase", "payload": {"category": "Food", "amount": 12.5}}
+{"timestamp": "2026-02-24T01:40:48Z", "source": "demo_client", "eventType": "purchase", "payload": {"category": "Games", "amount": 59.99}}
