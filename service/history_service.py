@@ -125,49 +125,65 @@ def handle_get_topn(req: Dict[str, Any]) -> Dict[str, Any]:
     result = top_n(events, start, end, field, n)
     return ok(result)
 
-def process_once() -> None:
-    req_path = Path(CFG.request_file)
-    resp_path = Path(CFG.response_file)
-    lock_path = Path(CFG.lock_file)
+def get_paths() -> tuple[Path, Path, Path]:
+    return Path(CFG.request_file), Path(CFG.response_file), Path(CFG.lock_file)
 
+
+def can_process_request(req_path: Path, resp_path: Path) -> bool:
     if not req_path.exists():
-        return
-    # If response already exists, wait for consumer to delete it.
+        return False
     if resp_path.exists():
+        return False
+    return True
+
+
+def load_request_safely(req_path: Path, resp_path: Path) -> Dict[str, Any] | None:
+    try:
+        return load_request(req_path)
+    except json.JSONDecodeError:
+        atomic_write_json(resp_path, err("Invalid JSON in history_request.json"))
+        return None
+    except Exception as e:
+        atomic_write_json(resp_path, err(f"Failed reading request: {e}"))
+        return None
+
+
+def dispatch_request(req: Dict[str, Any]) -> Dict[str, Any]:
+    action = validate_common(req)
+
+    if action == "logEvent":
+        return handle_log_event(req)
+    if action == "getSummary":
+        return handle_get_summary(req)
+    return handle_get_topn(req)
+
+
+def delete_request_file(req_path: Path) -> None:
+    try:
+        req_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+def process_once() -> None:
+    req_path, resp_path, lock_path = get_paths()
+
+    if not can_process_request(req_path, resp_path):
         return
     if not try_acquire_lock(lock_path):
         return
 
     try:
-        try:
-            req = load_request(req_path)
-        except json.JSONDecodeError:
-            atomic_write_json(resp_path, err("Invalid JSON in history_request.json"))
-            return
-        except Exception as e:
-            atomic_write_json(resp_path, err(f"Failed reading request: {e}"))
+        req = load_request_safely(req_path, resp_path)
+        if req is None:
             return
 
         try:
-            action = validate_common(req)
+            out = dispatch_request(req)
         except ValueError as e:
-            atomic_write_json(resp_path, err(str(e)))
-            return
-
-        if action == "logEvent":
-            out = handle_log_event(req)
-        elif action == "getSummary":
-            out = handle_get_summary(req)
-        else:
-            out = handle_get_topn(req)
+            out = err(str(e))
 
         atomic_write_json(resp_path, out)
-
-        # Consumer should delete request after receiving response; we also delete request to prevent replays.
-        try:
-            req_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+        delete_request_file(req_path)
     finally:
         release_lock(lock_path)
 
