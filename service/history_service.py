@@ -73,44 +73,55 @@ def handle_log_event(req: Dict[str, Any]) -> Dict[str, Any]:
     append_event(CFG.log_file, event)
     return ok()
 
-def handle_get_summary(req: Dict[str, Any]) -> Dict[str, Any]:
+def validate_time_range(req: Dict[str, Any], action_name: str) -> tuple[str, str]:
     start = req.get("startTime")
     end = req.get("endTime")
-    group_by = req.get("groupBy")
 
     if not isinstance(start, str) or not isinstance(end, str):
-        return err("getSummary requires 'startTime' and 'endTime' as strings.")
+        raise ValueError(f"{action_name} requires 'startTime' and 'endTime' as strings.")
+
+    parse_iso8601(start)
+    parse_iso8601(end)
+    return start, end
+
+
+def load_all_events() -> list[Dict[str, Any]]:
+    return list(read_events(CFG.log_file))
+
+def handle_get_summary(req: Dict[str, Any]) -> Dict[str, Any]:
+    group_by = req.get("groupBy")
+
     if not isinstance(group_by, str) or not group_by:
         return err("getSummary requires 'groupBy' as a non-empty string.")
 
     try:
-        parse_iso8601(start); parse_iso8601(end)
+        start, end = validate_time_range(req, "getSummary")
     except ValueError as e:
         return err(str(e))
+
+    events = load_all_events()
+    result = summarize(events, start, end, group_by)
+    return ok(result)
 
     events = list(read_events(CFG.log_file))
     result = summarize(events, start, end, group_by)
     return ok(result)
 
 def handle_get_topn(req: Dict[str, Any]) -> Dict[str, Any]:
-    start = req.get("startTime")
-    end = req.get("endTime")
     field = req.get("field")
     n = req.get("n")
 
-    if not isinstance(start, str) or not isinstance(end, str):
-        return err("getTopN requires 'startTime' and 'endTime' as strings.")
     if not isinstance(field, str) or not field:
         return err("getTopN requires 'field' as a non-empty string.")
     if not isinstance(n, int) or n < 0:
         return err("getTopN requires 'n' as a non-negative integer.")
 
     try:
-        parse_iso8601(start); parse_iso8601(end)
+        start, end = validate_time_range(req, "getTopN")
     except ValueError as e:
         return err(str(e))
 
-    events = list(read_events(CFG.log_file))
+    events = load_all_events()
     result = top_n(events, start, end, field, n)
     return ok(result)
 
