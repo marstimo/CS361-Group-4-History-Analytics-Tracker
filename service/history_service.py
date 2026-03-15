@@ -177,12 +177,21 @@ def process_once() -> None:
         if req is None:
             return
 
+        print("\n--- HISTORY SERVICE ---")
+        print("Request received:")
+        print(req)
+
         try:
             out = dispatch_request(req)
         except ValueError as e:
             out = err(str(e))
 
         atomic_write_json(resp_path, out)
+
+        print("Response written:")
+        print(out)
+        print("-----------------------\n")
+
         delete_request_file(req_path)
     finally:
         release_lock(lock_path)
